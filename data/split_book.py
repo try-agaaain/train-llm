@@ -1,5 +1,7 @@
 import json
 import re
+import sys
+from pathlib import Path
 from typing import List, Dict, Tuple
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -8,6 +10,13 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.callbacks import get_openai_callback
 from pydantic import BaseModel, Field
 import json_repair
+
+# 添加父目录到路径
+sys.path.append(str(Path(__file__).parent.parent))
+from utils import load_env, get_api_key, get_base_url
+
+# 加载环境变量
+load_env(__file__)
 
 # --- 1. 定义输出结构 ---
 class BoundaryLine(BaseModel):
@@ -133,9 +142,23 @@ class BookProcessor:
     def __init__(self, 
                  provider: str = "openai",
                  model: str = "qwen-plus",
-                 base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1",
-                 api_key: str = "sk-899c96c9f5b342388255efe5f3ded468", 
+                 base_url: str = None,
+                 api_key: str = None, 
                  temperature: float = 0):
+        
+        # 如果没有提供API key，从环境变量加载
+        if api_key is None:
+            if provider == "openai":
+                api_key = get_api_key("QWEN")
+            elif provider == "glm":
+                api_key = get_api_key("GLM")
+            elif provider == "gemini":
+                api_key = get_api_key("GEMINI")
+        
+        # 如果没有提供base_url，从环境变量或默认值加载
+        if base_url is None and provider == "openai":
+            base_url = get_base_url("QWEN")
+        
         if provider == "openai":
             self.llm = ChatOpenAI(
                 model=model,
@@ -503,28 +526,24 @@ class BookProcessor:
 
 # --- 4. 使用示例 ---
 if __name__ == "__main__":
-    # 示例1: 使用OpenAI兼容接口 (如qwen-plus)
+    # 示例1: 使用OpenAI兼容接口 (如qwen-plus)，API key从环境变量加载
     processor_openai = BookProcessor(
         provider="openai",
         model="qwen-plus",
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        api_key="sk-899c96c9f5b342388255efe5f3ded468",
         temperature=0
     )
     
-    # 示例2: 使用GLM (智谱AI)
+    # 示例2: 使用GLM (智谱AI)，API key从环境变量加载
     processor_glm = BookProcessor(
         provider="glm",
         model="glm-4-flash",
-        api_key="f256244ea8754fd290f260d4908c5062.BmhL8o2oneESP67X",
         temperature=0
     )
     
-    # 示例3: 使用Gemini (Google AI)
+    # 示例3: 使用Gemini (Google AI)，API key从环境变量加载
     processor_gemini = BookProcessor(
         provider="gemini",
         model="gemini-2.5-flash",
-        api_key="AIzaSyCZMvCygYo_EVvfbC1R7unG29zFd7R_IB0",
         temperature=0
     )
     
