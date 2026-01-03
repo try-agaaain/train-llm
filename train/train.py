@@ -15,6 +15,7 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model
 import logging
+import pathlib
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -32,7 +33,7 @@ class Config:
     # model_name = "rd211/Qwen3-0.6B-Instruct"
     
     # 数据配置
-    train_data_path = "/workspace/qa_dataset.py"
+    train_data_path = pathlib.Path(__file__).parent.parent / "data" / "qa_dataset.json"    
     max_length = 512
     
     # LoRA 配置
@@ -44,7 +45,7 @@ class Config:
     
     # 训练配置
     output_dir = "./qwen3_finetuned"
-    num_epochs = 6
+    num_epochs = 5
     batch_size = 4  # 减小批次大小
     gradient_accumulation_steps = 16  # 增加梯度累积步数保持有效批次
     learning_rate = 2e-4

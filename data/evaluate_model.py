@@ -151,7 +151,7 @@ class ModelEvaluator:
 def main():
     """主函数"""
     # 配置参数
-    model_path = "./qwen3_finetuned"  # 微调后的模型路径
+    model_path = "../qwen3_finetuned"  # 微调后的模型路径
     qa_dataset_path = "../data/qa_dataset.json"  # 训练集路径
     output_path = "../data/qa_dataset_padding.json"  # 输出路径
     
