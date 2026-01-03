@@ -20,6 +20,7 @@ dependencies = [
     "transformers==4.53.1",
     "accelerate>=1.0.1",
     "trl>=0.11.0",
+    "modelscope>=1.33.0",
 ]
 
 [[tool.uv.index]]
