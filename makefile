@@ -35,8 +35,11 @@ clean:
 	find . -name '*.pyc' -delete
 
 # 评估模型
+# 指定 batch size：make evaluate EVAL_BATCH_SIZE=4
+# 传递更多参数：make evaluate ARGS="--max-tokens 512 --output result.json"
+EVAL_BATCH_SIZE ?= 8
 evaluate:
-	$(PYTHON) data/evaluate_model.py
+	$(PYTHON) data/evaluate_model.py --batch-size $(EVAL_BATCH_SIZE) $(ARGS)
 
 # 推送模型到ModelScope
 PUSH_DIR := ./qwen3_merged_for_upload
