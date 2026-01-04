@@ -4,7 +4,6 @@ PYTHON = $(VENV)/bin/python
 PIP = $(VENV)/bin/pip
 MODELSCOPE_USER=SoFarSoLong
 MODEL_NAME=qwen3_merged
-MODELSCOPE_TOKEN=xxx
 # 默认目标
 .DEFAULT_GOAL := help
 
@@ -34,6 +33,10 @@ test:
 clean:
 	rm -rf __pycache__ .pytest_cache
 	find . -name '*.pyc' -delete
+
+# 评估模型
+evaluate:
+	$(PYTHON) data/evaluate_model.py
 
 # 推送模型到ModelScope
 PUSH_DIR := ./qwen3_merged_for_upload

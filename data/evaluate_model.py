@@ -1,10 +1,12 @@
 """
-模型评估脚本
-用训练好的模型对训练集中的问题进行回答，生成 qa_dataset_padding.json
+模型评估脚本 - 支持批处理和命令行参数
+
+用训练好的模型对训练集中的问题进行批量回答，生成 qa_dataset_padding.json
 """
 
 import json
 import torch
+import argparse
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer
@@ -12,30 +14,39 @@ from transformers import (
 from pathlib import Path
 from tqdm import tqdm
 import sys
+from typing import List, Dict
 
 # 添加父目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
 
 
-class ModelEvaluator:
-    def __init__(self, model_path: str, max_new_tokens: int = 512):
+class BatchModelEvaluator:
+    def __init__(self, model_path: str, max_new_tokens: int = 512, batch_size: int = 4):
         """
-        初始化模型评估器
+        初始化批处理模型评估器
         
         Args:
             model_path: 微调后的模型路径
             max_new_tokens: 生成的最大token数
+            batch_size: 批处理大小，同时处理的问题数量
         """
         self.model_path = model_path
         self.max_new_tokens = max_new_tokens
+        self.batch_size = batch_size
         
         print(f"📦 正在加载模型: {model_path}")
+        print(f"⚙️  批处理大小: {batch_size}")
+        print(f"🔢 最大生成token数: {max_new_tokens}")
         
         # 加载tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             model_path,
             trust_remote_code=True
         )
+        
+        # 设置padding token（如果没有的话）
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
         
         # 加载模型
         self.model = AutoModelForCausalLM.from_pretrained(
@@ -45,7 +56,7 @@ class ModelEvaluator:
             torch_dtype=torch.float16
         )
         
-        print("✅ 模型加载完成")
+        print("✅ 模型加载完成\n")
     
     def format_prompt(self, question: str) -> str:
         """格式化为 Qwen 对话格式"""
@@ -57,22 +68,29 @@ class ModelEvaluator:
 """
         return prompt
     
-    def generate_answer(self, question: str) -> str:
+    def generate_answers_batch(self, questions: List[str]) -> List[str]:
         """
-        对问题生成答案
+        批量生成答案
         
         Args:
-            question: 输入问题
+            questions: 问题列表
             
         Returns:
-            str: 模型生成的答案
+            List[str]: 生成的答案列表
         """
-        prompt = self.format_prompt(question)
+        # 格式化所有问题
+        prompts = [self.format_prompt(q) for q in questions]
         
-        # Tokenize
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        # 批量tokenize，padding到相同长度
+        inputs = self.tokenizer(
+            prompts, 
+            return_tensors="pt",
+            padding=True,  # 自动padding到batch中最长的序列
+            truncation=True,
+            max_length=2048
+        ).to(self.model.device)
         
-        # 生成
+        # 批量生成
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
@@ -81,62 +99,88 @@ class ModelEvaluator:
                 top_p=0.9,
                 do_sample=True,
                 pad_token_id=self.tokenizer.pad_token_id,
-                eos_token_id=self.tokenizer.eos_token_id
+                eos_token_id=self.tokenizer.eos_token_id,
+
             )
         
-        # 解码
-        response = self.tokenizer.decode(outputs[0], skip_special_tokens=False)
+        # 批量解码
+        responses = self.tokenizer.batch_decode(outputs, skip_special_tokens=False)
         
-        # 提取助手回答部分
-        try:
-            answer = response.split("<|im_start|>assistant\n")[-1].replace("<|im_end|>", "").strip()
-        except:
-            answer = response
+        # 提取答案
+        answers = []
+        for response in responses:
+            try:
+                answer = response.split("<|im_start|>assistant\n")[-1].replace("<|im_end|>", "").strip()
+            except:
+                answer = response.strip()
+            answers.append(answer)
         
-        return answer
+        return answers
     
     def evaluate_dataset(self, qa_dataset_path: str, output_path: str):
         """
-        评估整个数据集
+        评估整个数据集（批处理版本）
         
         Args:
             qa_dataset_path: 训练集QA数据路径
             output_path: 输出文件路径
         """
-        print(f"\n📂 正在加载数据集: {qa_dataset_path}")
+        print(f"📂 正在加载数据集: {qa_dataset_path}")
         
         # 加载数据集
         with open(qa_dataset_path, 'r', encoding='utf-8') as f:
             qa_dataset = json.load(f)
         
-        print(f"📊 数据集大小: {len(qa_dataset)} 条")
+        # 如果数据集是字典 (例如, {"id": {...}, ...} 格式), 转换为值列表以便切片
+        if isinstance(qa_dataset, dict):
+            qa_dataset = list(qa_dataset.get("entries"))
+
+        
+        print(f"📊 数据集大小: {len(qa_dataset)} 条\n")
         
         # 评估结果列表
         results = []
         
-        # 遍历数据集
-        for idx, item in enumerate(tqdm(qa_dataset, desc="评估中")):
-            question = item.get('question', '')
-            expected_answer = item.get('answer', '')
+        # 按batch_size分批处理
+        num_batches = (len(qa_dataset) + self.batch_size - 1) // self.batch_size
+        
+        for batch_idx in tqdm(range(num_batches), desc="批处理评估中"):
+            # 获取当前批次的数据
+            start_idx = batch_idx * self.batch_size
+            end_idx = min(start_idx + self.batch_size, len(qa_dataset))
+            batch_items = qa_dataset[start_idx:end_idx]
             
-            if not question:
+            # 提取问题
+            questions = [item.get('question', '') for item in batch_items]
+            questions = [q for q in questions if q]  # 过滤空问题
+            
+            if not questions:
                 continue
             
-            # 生成答案
+            # 批量生成答案
             try:
-                generated_answer = self.generate_answer(question)
+                generated_answers = self.generate_answers_batch(questions)
             except Exception as e:
-                print(f"\n⚠️ 生成答案时出错 (问题 {idx}): {e}")
-                generated_answer = ""
+                print(f"\n⚠️ 批次 {batch_idx} 生成答案时出错: {e}")
+                # 如果批处理失败，降级为单个处理
+                generated_answers = []
+                for q in questions:
+                    try:
+                        ans = self.generate_answers_batch([q])[0]
+                        generated_answers.append(ans)
+                    except:
+                        generated_answers.append("")
             
             # 保存结果
-            result = {
-                "id": idx,
-                "question": question,
-                "expected_answer": expected_answer,
-                "generated_answer": generated_answer
-            }
-            results.append(result)
+            for i, item in enumerate(batch_items):
+                if i < len(generated_answers):
+                    result = {
+                        "id": start_idx + i,
+                        "question": item.get('question', ''),
+                        "expected_answer": item.get('answer', ''),
+                        "generated_answer": generated_answers[i]
+                    }
+                    results.append(result)
         
         # 保存结果
         print(f"\n💾 保存结果到: {output_path}")
@@ -148,18 +192,70 @@ class ModelEvaluator:
         return results
 
 
+def parse_arguments():
+    pwd = Path(__file__).parent
+    
+    """解析命令行参数"""
+    parser = argparse.ArgumentParser(
+        description="批处理模型评估脚本 - 使用微调后的模型生成答案",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用示例:
+  # 指定模型和数据集路径
+  python evaluate.py --model ./models/qwen3_finetuned --dataset ./data/qa_dataset.json
+"""
+    )
+    
+    parser.add_argument(
+        '--model',
+        type=str,
+        default= pwd.parent / "qwen3_finetuned",
+        help=f'微调后的模型路径 (默认: {pwd.parent / "qwen3_finetuned"})'
+    )
+    
+    parser.add_argument(
+        '--dataset',
+        type=str,
+        default= pwd / "qa_dataset.json",
+        help=f'训练集QA数据路径 (默认: {pwd / "qa_dataset.json"})'
+    )
+    
+    parser.add_argument(
+        '--output',
+        type=str,
+        default= pwd / "qa_dataset_padding.json",
+        help=f'输出文件路径 (默认: {pwd / "qa_dataset_padding.json"})'
+    )
+    
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=8,
+        help='批处理大小，根据GPU显存调整 (默认: 8)'
+    )
+    
+    parser.add_argument(
+        '--max-tokens',
+        type=int,
+        default=1024,
+        help='生成的最大token数 (默认: 1024)'
+    )
+    
+    return parser.parse_args()
+
+
 def main():
     """主函数"""
-    # 配置参数
-    model_path = "../qwen3_finetuned"  # 微调后的模型路径
-    qa_dataset_path = "../data/qa_dataset.json"  # 训练集路径
-    output_path = "../data/qa_dataset_padding.json"  # 输出路径
+    # 解析命令行参数
+    args = parse_arguments()
     
-    # 检查路径
-    model_path = Path(__file__).parent / model_path
-    qa_dataset_path = Path(__file__).parent.parent / "data" / "qa_dataset.json"
-    output_path = Path(__file__).parent.parent / "data" / "qa_dataset_padding.json"
+    model_path = Path(args.model) 
+    qa_dataset_path = Path(args.dataset)
+    output_path = Path(args.output)
     
+    # 确保输出目录存在
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
     if not model_path.exists():
         print(f"❌ 模型路径不存在: {model_path}")
         return
@@ -169,9 +265,10 @@ def main():
         return
     
     # 初始化评估器
-    evaluator = ModelEvaluator(
+    evaluator = BatchModelEvaluator(
         model_path=str(model_path),
-        max_new_tokens=512
+        max_new_tokens=args.max_tokens,
+        batch_size=args.batch_size
     )
     
     # 评估数据集
