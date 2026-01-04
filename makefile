@@ -3,7 +3,7 @@ VENV = .venv
 PYTHON = $(VENV)/bin/python
 PIP = $(VENV)/bin/pip
 MODELSCOPE_USER=SoFarSoLong
-MODEL_NAME=qwen3_finetuned
+MODEL_NAME=qwen3_merged
 MODELSCOPE_TOKEN=xxx
 # 默认目标
 .DEFAULT_GOAL := help
@@ -11,10 +11,10 @@ MODELSCOPE_TOKEN=xxx
 # 帮助信息
 help:
 	@echo "可用命令:"
-	@echo "  make setup       初始化开发环境"
-	@echo "  make train       训练模型"
-	@echo "  make test        运行测试"
-	@echo "  make clean       清理生成文件"
+	@echo "  make setup	   初始化开发环境"
+	@echo "  make train	   训练模型"
+	@echo "  make test		运行测试"
+	@echo "  make clean	   清理生成文件"
 	@echo "  make push-model  推送模型到ModelScope"
 
 # 初始化环境
@@ -36,7 +36,7 @@ clean:
 	find . -name '*.pyc' -delete
 
 # 推送模型到ModelScope
-PUSH_DIR := ./qwen3_finetuned_for_upload
+PUSH_DIR := ./qwen3_merged_for_upload
 
 push-model: setup-upload-dir
 	@echo "正在推送模型到ModelScope..."
@@ -57,21 +57,43 @@ setup-upload-dir:
 	rm -rf $(PUSH_DIR)
 	mkdir -p $(PUSH_DIR)
 	# 复制必要的 LoRA/Adapter 文件
-	cp ./qwen3_finetuned/{adapter_config.json,adapter_model.safetensors,merges.txt} $(PUSH_DIR)/
-	# 复制 tokenizer 文件
-	cp ./qwen3_finetuned/{added_tokens.json,chat_template.jinja,special_tokens_map.json,tokenizer.json,tokenizer_config.json,vocab.json} $(PUSH_DIR)/
-	# 复制 README.md
-	cp ./qwen3_finetuned/README.md $(PUSH_DIR)/
+	cp ./qwen3_merged/{adapter_config.json,adapter_model.safetensors,merges.txt,added_tokens.json,chat_template.jinja,special_tokens_map.json,tokenizer.json,tokenizer_config.json,vocab.json,README.md} $(PUSH_DIR)/
 	@echo "上传目录准备完毕。"
 
-pull-model:
-	@echo "正在从ModelScope拉取模型..."
+pull:
+	@echo "正在清理本地旧模型目录..."
+	rm -rf ./qwen3_finetuned
+	rm -rf ./qwen3_merged
+	@echo "正在从 ModelScope 下载模型..."
+	# 使用 modelscope download 命令的 standard 格式
 	uv run modelscope download \
-		$(MODELSCOPE_USER)/$(MODEL_NAME) \
-		--local-dir ./qwen3_finetuned \
-		--repo-type model \
+		--model $(MODELSCOPE_USER)/$(MODEL_NAME) \
+		--local_dir ./qwen3_merged \
 		--token $(MODELSCOPE_TOKEN) \
-		|| (echo "拉取失败，请检查：1. modelscope是否安装 2. 环境变量是否正确设置"; exit 1)
-	@echo "拉取成功！模型已保存到：./qwen3_finetuned"
+		|| (echo "拉取失败，请检查：1. 网络连接 2. 模型 ID 是否正确 3. Token 是否有效"; exit 1)
+	@echo "下载完成！模型已保存在 ./qwen3_merged"
 
-.PHONY: help setup train test clean push-model
+server:
+	python -m vllm.entrypoints.openai.api_server \
+	--model /workspace/LLM-Agent/fine-turning/minimind-chat/qwen3_merged \
+	--served-model-name qwen-ft \
+	--trust-remote-code \
+	--gpu-memory-utilization 0.9 \
+	--port 8000
+
+kinit:
+	@echo "正在初始化 Kaggle Notebook 元数据..."
+	uv run kaggle kernels init -p kaggle
+	@echo "元数据文件已在 kaggle/kernel-metadata.json 创建。请编辑此文件以更新 Notebook 信息。"
+
+kpush:
+	@echo "正在推送 Jupyter Notebook 到 Kaggle..."
+	uv run kaggle kernels push -p kaggle
+	@echo "推送完成！"
+
+kpull:
+	@echo "正在从 Kaggle 拉取 Jupyter Notebook..."
+	uv run kaggle kernels pull -p kaggle
+	@echo "拉取完成！"
+
+.PHONY: help setup train test clean push-model kinit kpush kpull

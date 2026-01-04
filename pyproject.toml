@@ -1,9 +1,9 @@
 [project]
 name = "chat"
 version = "0.1.0"
-description = "Add your description here"
+description = "Deep Learning environment for MiniMind-Chat"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "datasets>=4.4.2",
     "ddgs>=9.8.0",
@@ -15,14 +15,19 @@ dependencies = [
     "langchain-openai>=1.0.2",
     "langchain-text-splitters>=1.0.0",
     "langgraph-cli[inmem]>=0.4.7",
-    "peft==0.13.2",
-    "torch>=2.9.1",
-    "transformers==4.53.1",
-    "accelerate>=1.0.1",
-    "trl>=0.11.0",
+    "peft>=0.14.0",
+    "torch>=2.9.0", # 必须精确匹配 vLLM 0.13.0 的要求
+    "torchvision>=0.20.0", # 与 torch 2.9.0 配套的版本
+    "transformers>=4.57.0", # 建议升级以支持 DeepSeek-V3 等新模型
+    "accelerate>=1.1.0",
+    "trl>=0.13.0", # 升级 trl 以支持最新的 vLLM 集成
     "modelscope>=1.33.0",
+    "numpy>=2.2.0",
+    "vllm==0.13.0", # 锁定最新稳定版
+    "kaggle>=1.8.3",
 ]
 
 [[tool.uv.index]]
 url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 default = true
+

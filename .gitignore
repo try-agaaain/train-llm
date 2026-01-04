@@ -9,3 +9,5 @@ wheels/
 # Virtual environments
 .venv
 qwen3_finetuned/
+
+.env
