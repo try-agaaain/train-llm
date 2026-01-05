@@ -315,8 +315,8 @@ class DatasetAugmenter:
 def main():
     """主函数"""
     # 配置路径
-    padding_file = Path(__file__).parent / "qa_dataset_padding.json"
-    output_file = Path(__file__).parent / "qa_dataset_augmented.json"
+    padding_file = Path(__file__).parent.parent / "artifacts" / "dataset" / "qa_dataset_padding.json"
+    output_file = Path(__file__).parent.parent / "artifacts" / "dataset" / "qa_dataset_augmented.json"
     
     if not padding_file.exists():
         print(f"❌ 评估结果文件不存在: {padding_file}")

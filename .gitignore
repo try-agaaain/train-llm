@@ -8,7 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
-qwen3_finetuned/
-qwen3_merged/
+
+# Artifacts (模型和数据集文件)
+artifacts/
 
 .env
+
+kaggle/output/

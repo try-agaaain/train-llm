@@ -1,15 +1,21 @@
 {
-  "id": "team317/train-notebook",
-  "title": "Train Notebook",
-  "code_file": "train.ipynb",
+  "id": "team317/train-llm",
+  "id_no": 106217681,
+  "title": "train-llm",
+  "code_file": "train-llm.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": true,
-  "enable_gpu": false,
+  "enable_gpu": true,
   "enable_tpu": false,
   "enable_internet": true,
-  "dataset_sources": [],
-  "competition_sources": [],
+  "keywords": [],
+  "dataset_sources": [
+    "team317/env-key"
+  ],
   "kernel_sources": [],
-  "model_sources": []
+  "competition_sources": [],
+  "model_sources": [],
+  "docker_image": "gcr.io/kaggle-private-byod/python@sha256:536e3d9752ddf933ae83b0a0c3ea67d38e6236db11a1cd47d84927a0b8d2c440",
+  "machine_shape": "NvidiaTeslaT4"
 }

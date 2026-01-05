@@ -550,9 +550,10 @@ if __name__ == "__main__":
     # 选择使用的处理器
     processor = processor_openai  # 或 processor_glm, processor_gemini
     
+    pwd = Path(__file__).parent
+    artifacts_dir = pwd.parent / "artifacts" / "dataset"
     # 处理书籍
     processor.process_book_to_dataset(
-        # file_path=r"/workspace/LLM-Agent/fine-turning/minimind-chat/train/MinerU_markdown_计算机网络-第7版-谢希仁_20251223084758_2003266285337022464.md",
-        file_path=r"/workspace/LLM-Agent/fine-turning/minimind-chat/train/MinerU_markdown_操作系统导论（Operating Systems：Three Easy Pieces）_含目录_20251223003421_2003142070818533376.md",
-        output_file="train_dataset_1.jsonl"
+        file_path=pwd / "MinerU_markdown_计算机网络-第7版-谢希仁_20251223084758_2003266285337022464.md", 
+        output_file=pwd / "book_split.jsonl"
     )

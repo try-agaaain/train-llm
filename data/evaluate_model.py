@@ -209,22 +209,22 @@ def parse_arguments():
     parser.add_argument(
         '--model',
         type=str,
-        default= pwd.parent / "qwen3_finetuned",
-        help=f'微调后的模型路径 (默认: {pwd.parent / "qwen3_finetuned"})'
+        default= pwd.parent / "artifacts" / "models" / "qwen3_finetuned",
+        help=f'微调后的模型路径 (默认: {pwd.parent / "artifacts" / "models" / "qwen3_finetuned"})'
     )
     
     parser.add_argument(
         '--dataset',
         type=str,
-        default= pwd / "qa_dataset.json",
-        help=f'训练集QA数据路径 (默认: {pwd / "qa_dataset.json"})'
+        default= pwd.parent / "artifacts" / "dataset" / "qa_dataset.json",
+        help=f'训练集QA数据路径 (默认: {pwd.parent / "artifacts" / "dataset" / "qa_dataset.json"})'
     )
     
     parser.add_argument(
         '--output',
         type=str,
-        default= pwd / "qa_dataset_padding.json",
-        help=f'输出文件路径 (默认: {pwd / "qa_dataset_padding.json"})'
+        default= pwd.parent / "artifacts" / "dataset" / "qa_dataset_padding.json",
+        help=f'输出文件路径 (默认: {pwd.parent / "artifacts" / "dataset" / "qa_dataset_padding.json"})'
     )
     
     parser.add_argument(

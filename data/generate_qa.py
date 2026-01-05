@@ -226,8 +226,12 @@ if __name__ == "__main__":
     
     # 设置输入输出路径
     # 请根据实际情况修改文件名
+    pwd = Path(__file__).parent
     input_file = "/workspace/LLM-Agent/fine-turning/minimind-chat/dataset/MinerU_markdown_计算机网络-第7版-谢希仁_20251223084758_2003266285337022464.md"
-    output_file = "qa_dataset_new.json"
+    output_file = pwd.parent / "artifacts" / "dataset" / "qa_dataset_new.json"
+    
+    # 确保输出目录存在
+    output_file.parent.mkdir(parents=True, exist_ok=True)
     
     # 检查文件是否存在
     if not os.path.exists(input_file):
@@ -235,6 +239,6 @@ if __name__ == "__main__":
         input_file = os.path.basename(input_file)
     
     if os.path.exists(input_file):
-        generator.process_file(input_file, output_file)
+        generator.process_file(input_file, str(output_file))
     else:
         print(f"❌ 找不到输入文件: {input_file}")

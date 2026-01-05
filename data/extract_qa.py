@@ -1,8 +1,10 @@
 import json
+from pathlib import Path
 
 # 读取jsonl文件并提取所有entries中的qa_pairs
-input_path = "train_dataset.jsonl"
-output_path = "qa_dataset.json"
+pwd = Path(__file__).parent
+input_path = pwd / "train_dataset.jsonl"
+output_path = pwd.parent / "artifacts" / "dataset" / "qa_dataset.json"
 qa_pairs = []
 
 with open(input_path, 'r', encoding='utf-8') as f:
@@ -14,6 +16,9 @@ with open(input_path, 'r', encoding='utf-8') as f:
             answer = qa.get('content')
             if question and answer:
                 qa_pairs.append({'question': question, 'answer': answer})
+
+# 确保输出目录存在
+output_path.parent.mkdir(parents=True, exist_ok=True)
 
 with open(output_path, 'w', encoding='utf-8') as f:
     json.dump(qa_pairs, f, ensure_ascii=False, indent=2)
