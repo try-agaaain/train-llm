@@ -71,8 +71,8 @@ artifacts/
 │   ├── qa_dataset_augmented.json    # 增强数据集
 │   └── book_split.jsonl             # 书籍切分结果
 └── models/
-    ├── qwen3_finetuned/             # 微调后的模型（LoRA）
-    └── qwen3_merged/                # 合并后的模型
+    ├── local_finetuned/             # 训练阶段中间输出（checkpoint）
+    └── qwen3_finetuned/             # 训练完成后的最终模型（用于上传/推理/测试）
 ```
 
 ## Python 脚本使用

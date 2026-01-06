@@ -51,8 +51,9 @@ class Config:
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]  # 目标层
     # target_modules = ["o_proj"]  # 目标层
     
-    # 训练配置
-    output_dir = str(artifacts_dir / "models" / "qwen3_finetuned")
+    # 训练配置目录
+    intermediate_dir = str(artifacts_dir / "models" / "local_finetuned")  # 训练中间输出（checkpoint）
+    final_dir = str(artifacts_dir / "models" / "qwen3_finetuned")          # 训练完成后的最终模型
     num_epochs = 5
     batch_size = 4  # 减小批次大小
     gradient_accumulation_steps = 16  # 增加梯度累积步数保持有效批次
@@ -174,7 +175,7 @@ def train(config):
     
     # 配置训练参数
     training_args = TrainingArguments(
-        output_dir=config.output_dir,
+        output_dir=config.intermediate_dir,
         num_train_epochs=config.num_epochs,
         per_device_train_batch_size=config.batch_size,
         gradient_accumulation_steps=config.gradient_accumulation_steps,
@@ -209,9 +210,11 @@ def train(config):
     trainer.train()
     
     # 保存模型
-    logger.info(f"保存模型到: {config.output_dir}")
-    trainer.save_model(config.output_dir)
-    tokenizer.save_pretrained(config.output_dir)
+    # 确保最终目录存在
+    Path(config.final_dir).mkdir(parents=True, exist_ok=True)
+    logger.info(f"保存模型到: {config.final_dir}")
+    trainer.save_model(config.final_dir)
+    tokenizer.save_pretrained(config.final_dir)
     
     logger.info("训练完成!")
 
@@ -221,12 +224,12 @@ def test_model(config, test_question):
     logger.info("加载微调后的模型进行测试...")
     
     tokenizer = AutoTokenizer.from_pretrained(
-        config.output_dir,
+        config.final_dir,
         trust_remote_code=True
     )
     
     model = AutoModelForCausalLM.from_pretrained(
-        config.output_dir,
+        config.final_dir,
         trust_remote_code=True,
         device_map="auto"
     )

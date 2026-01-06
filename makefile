@@ -67,47 +67,40 @@ EVAL_BATCH_SIZE ?= 8
 evaluate:
 	$(PYTHON) data/evaluate_model.py --batch-size $(EVAL_BATCH_SIZE) --artifacts-dir $(ARTIFACTS_DIR) $(ARGS)
 
-# 推送模型到ModelScope
-PUSH_MODEL_DIR := $(ARTIFACTS_DIR)/models/qwen3_merged_for_upload
-
-mpush: setup-model-upload-dir
+# 推送模型到ModelScope（直接从统一目录上传）
+mpush:
 	@echo "正在推送模型到ModelScope..."
 	uv run modelscope upload \
 		$(MODELSCOPE_USER)/$(MODEL_NAME) \
-		$(PUSH_MODEL_DIR) \
+		$(ARTIFACTS_DIR)/models/qwen3_finetuned \
 		--repo-type model \
 		--commit-message "模型更新" \
 		--token $(MODELSCOPE_TOKEN) \
 		|| (echo "推送失败，请检查：1. modelscope是否安装 2. 环境变量是否正确设置"; exit 1)
-	@echo "清理临时目录..."
-	rm -rf $(PUSH_MODEL_DIR)
 	@echo "推送成功！访问地址：https://modelscope.cn/$(MODELSCOPE_USER)/$(MODEL_NAME)"
 
-# 准备模型上传目录
-setup-model-upload-dir:
-	@echo "正在准备上传目录 $(PUSH_MODEL_DIR)..."
-	rm -rf $(PUSH_MODEL_DIR)
-	mkdir -p $(PUSH_MODEL_DIR)
-	# 复制必要的 LoRA/Adapter 文件
-	cp $(ARTIFACTS_DIR)/models/qwen3_merged/{adapter_config.json,adapter_model.safetensors,merges.txt,added_tokens.json,chat_template.jinja,special_tokens_map.json,tokenizer.json,tokenizer_config.json,vocab.json,README.md} $(PUSH_MODEL_DIR)/
-	@echo "上传目录准备完毕。"
-
+# 从ModelScope拉取模型（temp下载 + 备份替换）
 mpull:
-	@echo "正在清理本地旧模型目录..."
-	rm -rf $(ARTIFACTS_DIR)/models/qwen3_merged
 	@echo "正在从 ModelScope 下载模型..."
 	mkdir -p $(ARTIFACTS_DIR)/models
-	# 使用 modelscope download 命令的 standard 格式
+	rm -rf $(ARTIFACTS_DIR)/models/temp
 	uv run modelscope download \
 		--model $(MODELSCOPE_USER)/$(MODEL_NAME) \
-		--local_dir $(ARTIFACTS_DIR)/models/qwen3_merged \
+		--local_dir $(ARTIFACTS_DIR)/models/temp \
 		--token $(MODELSCOPE_TOKEN) \
 		|| (echo "拉取失败，请检查：1. 网络连接 2. 模型 ID 是否正确 3. Token 是否有效"; exit 1)
-	@echo "下载完成！模型已保存在 $(ARTIFACTS_DIR)/models/qwen3_merged"
+	@echo "下载完成！正在进行备份替换..."
+	@timestamp=$$(date +%Y%m%d%H%M%S); \
+	if [ -d "$(ARTIFACTS_DIR)/models/qwen3_finetuned" ]; then \
+	  echo "备份现有模型到: $(ARTIFACTS_DIR)/models/qwen3_finetuned_bak_$$timestamp"; \
+	  mv $(ARTIFACTS_DIR)/models/qwen3_finetuned $(ARTIFACTS_DIR)/models/qwen3_finetuned_bak_$$timestamp; \
+	fi; \
+	mv $(ARTIFACTS_DIR)/models/temp $(ARTIFACTS_DIR)/models/qwen3_finetuned; \
+	echo "模型已保存在 $(ARTIFACTS_DIR)/models/qwen3_finetuned"
 
 server:
 	python -m vllm.entrypoints.openai.api_server \
-	--model $(ARTIFACTS_DIR)/models/qwen3_merged \
+	--model $(ARTIFACTS_DIR)/models/qwen3_finetuned \
 	--served-model-name qwen-ft \
 	--trust-remote-code \
 	--gpu-memory-utilization 0.9 \
@@ -144,13 +137,21 @@ setup-dataset-upload-dir:
 dpull:
 	@echo "正在从 ModelScope 下载数据集..."
 	mkdir -p $(ARTIFACTS_DIR)/dataset
-	# 使用 modelscope download 命令下载数据集
+	rm -rf $(ARTIFACTS_DIR)/dataset_temp
 	uv run modelscope download \
 		--dataset $(MODELSCOPE_USER)/$(DATASET_NAME) \
-		--local_dir $(ARTIFACTS_DIR)/dataset \
+		--local_dir $(ARTIFACTS_DIR)/dataset_temp \
 		--token $(MODELSCOPE_TOKEN) \
 		|| (echo "拉取失败，请检查：1. 网络连接 2. 数据集 ID 是否正确 3. Token 是否有效"; exit 1)
-	@echo "下载完成！数据集已保存在 $(ARTIFACTS_DIR)/dataset"
+	@echo "下载完成！正在进行备份替换..."
+	@timestamp=$$(date +%Y%m%d%H%M%S); \
+	if [ -d "$(ARTIFACTS_DIR)/dataset" ] && [ "$(shell ls -A $(ARTIFACTS_DIR)/dataset 2>/dev/null)" != "" ]; then \
+	  echo "备份现有数据集到: $(ARTIFACTS_DIR)/dataset_bak_$$timestamp"; \
+	  mv $(ARTIFACTS_DIR)/dataset $(ARTIFACTS_DIR)/dataset_bak_$$timestamp; \
+	  mkdir -p $(ARTIFACTS_DIR)/dataset; \
+	fi; \
+	mv $(ARTIFACTS_DIR)/dataset_temp $(ARTIFACTS_DIR)/dataset; \
+	echo "数据集已保存在 $(ARTIFACTS_DIR)/dataset"
 
 kinit:
 	@echo "正在初始化 Kaggle Notebook 元数据..."
@@ -177,4 +178,4 @@ koutput:
 	uv run kaggle kernels output team317/train-llm -p ./kaggle/output
 	@echo "输出已保存到 ./kaggle_output 目录！"
 
-.PHONY: help setup train test clean mpush mpull dpush dpull setup-model-upload-dir setup-dataset-upload-dir server kinit kpush kpull kstatus koutput
+.PHONY: help setup train test clean mpush mpull dpush dpull setup-dataset-upload-dir server kinit kpush kpull kstatus koutput
