@@ -146,7 +146,7 @@ dpull:
 	mkdir -p $(ARTIFACTS_DIR)/dataset
 	# 使用 modelscope download 命令下载数据集
 	uv run modelscope download \
-		--model $(MODELSCOPE_USER)/$(DATASET_NAME) \
+		--dataset $(MODELSCOPE_USER)/$(DATASET_NAME) \
 		--local_dir $(ARTIFACTS_DIR)/dataset \
 		--token $(MODELSCOPE_TOKEN) \
 		|| (echo "拉取失败，请检查：1. 网络连接 2. 数据集 ID 是否正确 3. Token 是否有效"; exit 1)

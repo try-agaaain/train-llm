@@ -25,6 +25,7 @@ dependencies = [
     "numpy>=2.2.0",
     "vllm==0.13.0", # 锁定最新稳定版
     "kaggle>=1.8.3",
+    "addict>=2.4.0",
 ]
 
 [[tool.uv.index]]
