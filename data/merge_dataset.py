@@ -155,8 +155,13 @@ class DatasetMerger:
 
 def main():
     """主函数"""
+    import sys
+    sys.path.append(str(Path(__file__).parent.parent))
+    from utils import get_artifacts_dir
+    
     # 配置路径
-    data_dir = Path(__file__).parent.parent / "artifacts" / "dataset"
+    artifacts_dir = get_artifacts_dir(current_file=__file__)
+    data_dir = artifacts_dir / "dataset"
     original_file = data_dir / "qa_dataset.json"
     augmented_file = data_dir / "qa_dataset_augmented.json"
     output_file = data_dir / "qa_dataset.json"  # 覆盖原文件（已备份）

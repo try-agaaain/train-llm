@@ -17,5 +17,5 @@
   "competition_sources": [],
   "model_sources": [],
   "docker_image": "gcr.io/kaggle-private-byod/python@sha256:536e3d9752ddf933ae83b0a0c3ea67d38e6236db11a1cd47d84927a0b8d2c440",
-  "machine_shape": "NvidiaTeslaT4"
+  "machine_shape": "Gpu"
 }

@@ -13,7 +13,7 @@ import json_repair
 
 # 添加父目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import load_env, get_api_key, get_base_url
+from utils import load_env, get_api_key, get_base_url, get_artifacts_dir
 
 # 加载环境变量
 load_env(__file__)
@@ -551,9 +551,9 @@ if __name__ == "__main__":
     processor = processor_openai  # 或 processor_glm, processor_gemini
     
     pwd = Path(__file__).parent
-    artifacts_dir = pwd.parent / "artifacts" / "dataset"
+    artifacts_dir = get_artifacts_dir(current_file=__file__)
     # 处理书籍
     processor.process_book_to_dataset(
         file_path=pwd / "MinerU_markdown_计算机网络-第7版-谢希仁_20251223084758_2003266285337022464.md", 
-        output_file=pwd / "book_split.jsonl"
+        output_file=artifacts_dir / "dataset" / "book_split.jsonl"
     )

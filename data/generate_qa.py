@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 # 添加父目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import load_env, get_api_key, get_base_url
+from utils import load_env, get_api_key, get_base_url, get_artifacts_dir
 
 # 加载环境变量
 load_env(__file__)
@@ -227,8 +227,9 @@ if __name__ == "__main__":
     # 设置输入输出路径
     # 请根据实际情况修改文件名
     pwd = Path(__file__).parent
+    artifacts_dir = get_artifacts_dir(current_file=__file__)
     input_file = "/workspace/LLM-Agent/fine-turning/minimind-chat/dataset/MinerU_markdown_计算机网络-第7版-谢希仁_20251223084758_2003266285337022464.md"
-    output_file = pwd.parent / "artifacts" / "dataset" / "qa_dataset_new.json"
+    output_file = artifacts_dir / "dataset" / "qa_dataset_new.json"
     
     # 确保输出目录存在
     output_file.parent.mkdir(parents=True, exist_ok=True)

@@ -3,7 +3,10 @@ Qwen3 0.6B 模型微调训练脚本
 使用 LoRA 进行高效微调,支持自定义问答数据集
 """
 
+import os
+import sys
 import json
+import pathlib
 import torch
 from datasets import Dataset
 from transformers import (
@@ -15,13 +18,17 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model
 import logging
-import pathlib
+from pathlib import Path
+
+# 添加父目录到路径
+sys.path.append(str(Path(__file__).parent.parent))
+from utils import get_artifacts_dir
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-import os
+# 修改huggingface镜像站点
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 # ==================== 配置参数 ====================
@@ -33,7 +40,8 @@ class Config:
     # model_name = "rd211/Qwen3-0.6B-Instruct"
     
     # 数据配置
-    train_data_path = pathlib.Path(__file__).parent.parent / "artifacts" / "dataset" / "qa_dataset.json"    
+    artifacts_dir = get_artifacts_dir(current_file=__file__)
+    train_data_path = artifacts_dir / "dataset" / "qa_dataset.json"    
     max_length = 512
     
     # LoRA 配置
@@ -44,7 +52,7 @@ class Config:
     # target_modules = ["o_proj"]  # 目标层
     
     # 训练配置
-    output_dir = str(pathlib.Path(__file__).parent.parent / "artifacts" / "models" / "qwen3_finetuned")
+    output_dir = str(artifacts_dir / "models" / "qwen3_finetuned")
     num_epochs = 5
     batch_size = 4  # 减小批次大小
     gradient_accumulation_steps = 16  # 增加梯度累积步数保持有效批次

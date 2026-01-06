@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 # 添加父目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
-from utils import load_env, get_api_key, get_base_url
+from utils import load_env, get_api_key, get_base_url, get_artifacts_dir
 
 # 加载环境变量
 load_env(__file__)
@@ -315,8 +315,9 @@ class DatasetAugmenter:
 def main():
     """主函数"""
     # 配置路径
-    padding_file = Path(__file__).parent.parent / "artifacts" / "dataset" / "qa_dataset_padding.json"
-    output_file = Path(__file__).parent.parent / "artifacts" / "dataset" / "qa_dataset_augmented.json"
+    artifacts_dir = get_artifacts_dir(current_file=__file__)
+    padding_file = artifacts_dir / "dataset" / "qa_dataset_padding.json"
+    output_file = artifacts_dir / "dataset" / "qa_dataset_augmented.json"
     
     if not padding_file.exists():
         print(f"❌ 评估结果文件不存在: {padding_file}")

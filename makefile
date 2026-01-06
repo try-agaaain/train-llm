@@ -6,6 +6,9 @@ MODELSCOPE_USER=SoFarSoLong
 MODEL_NAME=qwen3_merged
 DATASET_NAME=qa_dataset
 
+# Artifacts目录配置 (优先级: 命令行参数 > 环境变量 > 默认值)
+ARTIFACTS_DIR ?= $(shell echo $${ARTIFACTS_DIR:-./artifacts})
+
 # 默认目标
 .DEFAULT_GOAL := help
 
@@ -27,15 +30,25 @@ help:
 	@echo ""
 	@echo "  make evaluate     评估模型"
 	@echo "  make server       启动VLLM服务器"
+	@echo ""
+	@echo "  Artifacts目录配置 (优先级: 参数 > 环境变量 > 默认值):"
+	@echo "    ARTIFACTS_DIR   指定artifacts目录 (默认: ./artifacts)"
+	@echo "  示例: make train ARTIFACTS_DIR=/custom/path"
+	@echo "  详见: ARTIFACTS_CONFIG.md"
 
 # 初始化环境
+UV_INDEX_URL ?=
 setup:
 	$(PIP) install uv
-	uv sync
+	if [ -n "$(UV_INDEX_URL)" ]; then \
+	  uv sync --index-url $(UV_INDEX_URL); \
+	else \
+	  uv sync; \
+	fi
 
 # 训练模型
 train:
-	$(PYTHON) train/train.py
+	ARTIFACTS_DIR=$(ARTIFACTS_DIR) $(PYTHON) train/train.py
 
 # 运行测试
 test:
@@ -48,13 +61,14 @@ clean:
 
 # 评估模型
 # 指定 batch size：make evaluate EVAL_BATCH_SIZE=4
+# 指定 artifacts 目录：make evaluate ARTIFACTS_DIR=/custom/path
 # 传递更多参数：make evaluate ARGS="--max-tokens 512 --output result.json"
 EVAL_BATCH_SIZE ?= 8
 evaluate:
-	$(PYTHON) data/evaluate_model.py --batch-size $(EVAL_BATCH_SIZE) $(ARGS)
+	$(PYTHON) data/evaluate_model.py --batch-size $(EVAL_BATCH_SIZE) --artifacts-dir $(ARTIFACTS_DIR) $(ARGS)
 
 # 推送模型到ModelScope
-PUSH_MODEL_DIR := ./artifacts/models/qwen3_merged_for_upload
+PUSH_MODEL_DIR := $(ARTIFACTS_DIR)/models/qwen3_merged_for_upload
 
 mpush: setup-model-upload-dir
 	@echo "正在推送模型到ModelScope..."
@@ -75,33 +89,33 @@ setup-model-upload-dir:
 	rm -rf $(PUSH_MODEL_DIR)
 	mkdir -p $(PUSH_MODEL_DIR)
 	# 复制必要的 LoRA/Adapter 文件
-	cp ./artifacts/models/qwen3_merged/{adapter_config.json,adapter_model.safetensors,merges.txt,added_tokens.json,chat_template.jinja,special_tokens_map.json,tokenizer.json,tokenizer_config.json,vocab.json,README.md} $(PUSH_MODEL_DIR)/
+	cp $(ARTIFACTS_DIR)/models/qwen3_merged/{adapter_config.json,adapter_model.safetensors,merges.txt,added_tokens.json,chat_template.jinja,special_tokens_map.json,tokenizer.json,tokenizer_config.json,vocab.json,README.md} $(PUSH_MODEL_DIR)/
 	@echo "上传目录准备完毕。"
 
 mpull:
 	@echo "正在清理本地旧模型目录..."
-	rm -rf ./artifacts/models/qwen3_finetuned
-	rm -rf ./artifacts/models/qwen3_merged
+	rm -rf $(ARTIFACTS_DIR)/models/qwen3_finetuned
+	rm -rf $(ARTIFACTS_DIR)/models/qwen3_merged
 	@echo "正在从 ModelScope 下载模型..."
-	mkdir -p ./artifacts/models
+	mkdir -p $(ARTIFACTS_DIR)/models
 	# 使用 modelscope download 命令的 standard 格式
 	uv run modelscope download \
 		--model $(MODELSCOPE_USER)/$(MODEL_NAME) \
-		--local_dir ./artifacts/models/qwen3_merged \
+		--local_dir $(ARTIFACTS_DIR)/models/qwen3_merged \
 		--token $(MODELSCOPE_TOKEN) \
 		|| (echo "拉取失败，请检查：1. 网络连接 2. 模型 ID 是否正确 3. Token 是否有效"; exit 1)
-	@echo "下载完成！模型已保存在 ./artifacts/models/qwen3_merged"
+	@echo "下载完成！模型已保存在 $(ARTIFACTS_DIR)/models/qwen3_merged"
 
 server:
 	python -m vllm.entrypoints.openai.api_server \
-	--model /workspace/LLM-Agent/fine-turning/minimind-chat/artifacts/models/qwen3_merged \
+	--model $(ARTIFACTS_DIR)/models/qwen3_merged \
 	--served-model-name qwen-ft \
 	--trust-remote-code \
 	--gpu-memory-utilization 0.9 \
 	--port 8000
 
 # 推送数据集到ModelScope
-PUSH_DATASET_DIR := ./artifacts/dataset_for_upload
+PUSH_DATASET_DIR := $(ARTIFACTS_DIR)/dataset_for_upload
 
 dpush: setup-dataset-upload-dir
 	@echo "正在推送数据集到ModelScope..."
@@ -122,22 +136,22 @@ setup-dataset-upload-dir:
 	rm -rf $(PUSH_DATASET_DIR)
 	mkdir -p $(PUSH_DATASET_DIR)
 	# 复制数据集文件
-	cp ./artifacts/dataset/*.json $(PUSH_DATASET_DIR)/ 2>/dev/null || true
-	cp ./artifacts/dataset/*.jsonl $(PUSH_DATASET_DIR)/ 2>/dev/null || true
+	cp $(ARTIFACTS_DIR)/dataset/*.json $(PUSH_DATASET_DIR)/ 2>/dev/null || true
+	cp $(ARTIFACTS_DIR)/dataset/*.jsonl $(PUSH_DATASET_DIR)/ 2>/dev/null || true
 	# 创建README
 	@echo "# QA Dataset\n\n本数据集包含计算机网络相关的问答对，用于微调语言模型。\n\n## 文件说明\n\n- qa_dataset.json: 主要训练数据集\n- qa_dataset_padding.json: 模型评估结果\n- qa_dataset_augmented.json: 增强后的数据集\n" > $(PUSH_DATASET_DIR)/README.md
 	@echo "数据集上传目录准备完毕。"
 
 dpull:
 	@echo "正在从 ModelScope 下载数据集..."
-	mkdir -p ./artifacts/dataset
+	mkdir -p $(ARTIFACTS_DIR)/dataset
 	# 使用 modelscope download 命令下载数据集
 	uv run modelscope download \
 		--model $(MODELSCOPE_USER)/$(DATASET_NAME) \
-		--local_dir ./artifacts/dataset \
+		--local_dir $(ARTIFACTS_DIR)/dataset \
 		--token $(MODELSCOPE_TOKEN) \
 		|| (echo "拉取失败，请检查：1. 网络连接 2. 数据集 ID 是否正确 3. Token 是否有效"; exit 1)
-	@echo "下载完成！数据集已保存在 ./artifacts/dataset"
+	@echo "下载完成！数据集已保存在 $(ARTIFACTS_DIR)/dataset"
 
 kinit:
 	@echo "正在初始化 Kaggle Notebook 元数据..."

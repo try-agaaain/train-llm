@@ -18,6 +18,7 @@ from typing import List, Dict
 
 # 添加父目录到路径
 sys.path.append(str(Path(__file__).parent.parent))
+from utils import get_artifacts_dir
 
 
 class BatchModelEvaluator:
@@ -203,28 +204,37 @@ def parse_arguments():
 使用示例:
   # 指定模型和数据集路径
   python evaluate.py --model ./models/qwen3_finetuned --dataset ./data/qa_dataset.json
+  # 指定artifacts目录
+  python evaluate.py --artifacts-dir /custom/path
 """
+    )
+    
+    parser.add_argument(
+        '--artifacts-dir',
+        type=str,
+        default=None,
+        help='Artifacts目录路径 (优先级: 参数 > 环境变量 > 默认值)'
     )
     
     parser.add_argument(
         '--model',
         type=str,
-        default= pwd.parent / "artifacts" / "models" / "qwen3_finetuned",
-        help=f'微调后的模型路径 (默认: {pwd.parent / "artifacts" / "models" / "qwen3_finetuned"})'
+        default=None,
+        help='微调后的模型路径（相对或绝对路径）'
     )
     
     parser.add_argument(
         '--dataset',
         type=str,
-        default= pwd.parent / "artifacts" / "dataset" / "qa_dataset.json",
-        help=f'训练集QA数据路径 (默认: {pwd.parent / "artifacts" / "dataset" / "qa_dataset.json"})'
+        default=None,
+        help='训练集QA数据路径（相对或绝对路径）'
     )
     
     parser.add_argument(
         '--output',
         type=str,
-        default= pwd.parent / "artifacts" / "dataset" / "qa_dataset_padding.json",
-        help=f'输出文件路径 (默认: {pwd.parent / "artifacts" / "dataset" / "qa_dataset_padding.json"})'
+        default=None,
+        help='输出文件路径（相对或绝对路径）'
     )
     
     parser.add_argument(
@@ -249,9 +259,29 @@ def main():
     # 解析命令行参数
     args = parse_arguments()
     
-    model_path = Path(args.model) 
-    qa_dataset_path = Path(args.dataset)
-    output_path = Path(args.output)
+    # 获取artifacts目录
+    artifacts_dir = get_artifacts_dir(custom_path=args.artifacts_dir, current_file=__file__)
+    
+    # 设置路径（支持相对和绝对路径）
+    if args.model:
+        model_path = Path(args.model) if Path(args.model).is_absolute() else artifacts_dir / args.model
+    else:
+        model_path = artifacts_dir / "models" / "qwen3_finetuned"
+    
+    if args.dataset:
+        qa_dataset_path = Path(args.dataset) if Path(args.dataset).is_absolute() else artifacts_dir / args.dataset
+    else:
+        qa_dataset_path = artifacts_dir / "dataset" / "qa_dataset.json"
+    
+    if args.output:
+        output_path = Path(args.output) if Path(args.output).is_absolute() else artifacts_dir / args.output
+    else:
+        output_path = artifacts_dir / "dataset" / "qa_dataset_padding.json"
+    
+    print(f"📁 Artifacts目录: {artifacts_dir}")
+    print(f"📁 模型路径: {model_path}")
+    print(f"📁 数据集路径: {qa_dataset_path}")
+    print(f"📁 输出路径: {output_path}")
     
     # 确保输出目录存在
     output_path.parent.mkdir(parents=True, exist_ok=True)

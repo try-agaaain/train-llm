@@ -1,10 +1,16 @@
 import json
+import sys
 from pathlib import Path
+
+# 添加父目录到路径
+sys.path.append(str(Path(__file__).parent.parent))
+from utils import get_artifacts_dir
 
 # 读取jsonl文件并提取所有entries中的qa_pairs
 pwd = Path(__file__).parent
+artifacts_dir = get_artifacts_dir(current_file=__file__)
 input_path = pwd / "train_dataset.jsonl"
-output_path = pwd.parent / "artifacts" / "dataset" / "qa_dataset.json"
+output_path = artifacts_dir / "dataset" / "qa_dataset.json"
 qa_pairs = []
 
 with open(input_path, 'r', encoding='utf-8') as f:

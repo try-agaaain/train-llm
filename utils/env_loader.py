@@ -84,3 +84,38 @@ def get_base_url(provider: str = "QWEN") -> str:
         base_url = default_urls.get(provider.upper(), "")
     
     return base_url
+
+
+def get_artifacts_dir(custom_path: str = None, current_file: str = None) -> Path:
+    """
+    获取artifacts目录路径，优先级：参数传递 > 环境变量 > 默认值
+    
+    Args:
+        custom_path: 自定义路径（通常来自命令行参数）
+        current_file: 调用文件的__file__路径（用于计算默认路径）
+        
+    Returns:
+        Path: artifacts目录的绝对路径
+    """
+    # 优先级1: 命令行参数
+    if custom_path:
+        return Path(custom_path).resolve()
+    
+    # 优先级2: 环境变量
+    env_path = os.getenv("ARTIFACTS_DIR", "")
+    if env_path:
+        return Path(env_path).resolve()
+    
+    # 优先级3: 默认值（项目根目录/artifacts）
+    if current_file:
+        # 从当前文件向上查找项目根目录
+        current_path = Path(current_file).resolve()
+        project_root = current_path
+        while project_root.parent != project_root:
+            # 检查是否是项目根目录（包含pyproject.toml或.env）
+            if (project_root / "pyproject.toml").exists() or (project_root / ".env").exists():
+                return project_root / "artifacts"
+            project_root = project_root.parent
+    
+    # 如果没有找到项目根目录，使用当前工作目录
+    return Path.cwd() / "artifacts"
