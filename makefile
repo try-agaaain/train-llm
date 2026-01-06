@@ -3,7 +3,7 @@ VENV = .venv
 PYTHON = $(VENV)/bin/python
 PIP = $(VENV)/bin/pip
 MODELSCOPE_USER=SoFarSoLong
-MODEL_NAME=qwen3_merged
+MODEL_NAME=qwen3_finetuned
 DATASET_NAME=qa_dataset
 
 # Artifacts目录配置 (优先级: 命令行参数 > 环境变量 > 默认值)
@@ -94,7 +94,6 @@ setup-model-upload-dir:
 
 mpull:
 	@echo "正在清理本地旧模型目录..."
-	rm -rf $(ARTIFACTS_DIR)/models/qwen3_finetuned
 	rm -rf $(ARTIFACTS_DIR)/models/qwen3_merged
 	@echo "正在从 ModelScope 下载模型..."
 	mkdir -p $(ARTIFACTS_DIR)/models
