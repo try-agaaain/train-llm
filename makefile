@@ -92,9 +92,10 @@ mpull:
 	@echo "下载完成！正在进行备份替换..."
 	@timestamp=$$(date +%Y%m%d%H%M%S); \
 	if [ -d "$(ARTIFACTS_DIR)/models/qwen3_finetuned" ]; then \
-	  echo "备份现有模型到: $(ARTIFACTS_DIR)/models/qwen3_finetuned_bak_$$timestamp"; \
-	  mv $(ARTIFACTS_DIR)/models/qwen3_finetuned $(ARTIFACTS_DIR)/models/qwen3_finetuned_bak_$$timestamp; \
+		echo "备份现有模型到: $(ARTIFACTS_DIR)/models/qwen3_finetuned_bak_$$timestamp"; \
+		mv $(ARTIFACTS_DIR)/models/qwen3_finetuned $(ARTIFACTS_DIR)/models/qwen3_finetuned_bak_$$timestamp; \
 	fi; \
+	rm -rf $(ARTIFACTS_DIR)/models/qwen3_finetuned; \
 	mv $(ARTIFACTS_DIR)/models/temp $(ARTIFACTS_DIR)/models/qwen3_finetuned; \
 	echo "模型已保存在 $(ARTIFACTS_DIR)/models/qwen3_finetuned"
 
@@ -146,10 +147,11 @@ dpull:
 	@echo "下载完成！正在进行备份替换..."
 	@timestamp=$$(date +%Y%m%d%H%M%S); \
 	if [ -d "$(ARTIFACTS_DIR)/dataset" ] && [ "$(shell ls -A $(ARTIFACTS_DIR)/dataset 2>/dev/null)" != "" ]; then \
-	  echo "备份现有数据集到: $(ARTIFACTS_DIR)/dataset_bak_$$timestamp"; \
-	  mv $(ARTIFACTS_DIR)/dataset $(ARTIFACTS_DIR)/dataset_bak_$$timestamp; \
-	  mkdir -p $(ARTIFACTS_DIR)/dataset; \
+		echo "备份现有数据集到: $(ARTIFACTS_DIR)/dataset_bak_$$timestamp"; \
+		mv $(ARTIFACTS_DIR)/dataset $(ARTIFACTS_DIR)/dataset_bak_$$timestamp; \
+		mkdir -p $(ARTIFACTS_DIR)/dataset; \
 	fi; \
+	rm -rf $(ARTIFACTS_DIR)/dataset; \
 	mv $(ARTIFACTS_DIR)/dataset_temp $(ARTIFACTS_DIR)/dataset; \
 	echo "数据集已保存在 $(ARTIFACTS_DIR)/dataset"
 
